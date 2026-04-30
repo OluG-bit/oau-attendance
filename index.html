@@ -822,7 +822,7 @@ input[type=file]{display:none;}
 <div class="overlay" id="m-session">
   <div class="modal">
     <div class="modal-title">🟢 Start Attendance Session</div>
-    <p class="text-sm col-3" style="margin-bottom:1.2rem;">Your network IP and GPS will be captured. Students must be on the same WiFi network. GPS is used as a campus-level backup check (within 500m).</p>
+    <p class="text-sm col-3" style="margin-bottom:1.2rem;">Your network IP and GPS will be captured. Students must be on the same WiFi network. GPS confirms they are on campus (within 500m).</p>
     <div id="sess-status"></div>
     <div class="modal-foot">
       <button class="btn btn-outline btn-sm" onclick="closeModal('m-session')">Cancel</button>
@@ -881,10 +881,7 @@ input[type=file]{display:none;}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 
-<script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-analytics.js";
+<script>
 
 // ╔══════════════════════════════════════════════════════╗
 // ║  FIREBASE CONFIG — REPLACE WITH YOUR OWN VALUES      ║
@@ -892,7 +889,7 @@ input[type=file]{display:none;}
 // ╚══════════════════════════════════════════════════════╝
 const firebaseConfig = {
   apiKey:            "AIzaSyCgquLvZpnODhUZZh5zymO4fowWqVXWk_Q",
-  authDomain:        "oau-attendance-system-8c765.firebaseapp.com,
+  authDomain:        "oau-attendance-system-8c765.firebaseapp.com",
   projectId:         "oau-attendance-system-8c765",
   storageBucket:     "oau-attendance-system-8c765.firebasestorage.app",
   messagingSenderId: "442874527368",
@@ -901,17 +898,15 @@ const firebaseConfig = {
 
 };
 // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
+let db = null;
+try { firebase.initializeApp(firebaseConfig); db = firebase.firestore(); } catch(e){ console.error("Firebase init failed:",e); }
 
 
 // ─── Firestore collection references ───────────────────
-const usersCol    = () => db.collection('users');
-const coursesCol  = () => db.collection('courses');
-const sessionsCol = () => db.collection('sessions');
-const recordsCol  = () => db.collection('records');
+const usersCol    = () => db ? db.collection('users')    : null;
+const coursesCol  = () => db ? db.collection('courses')  : null;
+const sessionsCol = () => db ? db.collection('sessions') : null;
+const recordsCol  = () => db ? db.collection('records')  : null;
 
 // ─── In-memory cache (populated from Firestore) ────────
 const DS = {
@@ -953,6 +948,7 @@ let _unsubRecords  = null;
 // ║  SEED DEFAULT DATA (runs once if Firestore is empty) ║
 // ╚══════════════════════════════════════════════════════╝
 async function seedIfEmpty(){
+  if(!db) return;
   const snap = await usersCol().limit(1).get();
   if(!snap.empty) return; // already seeded
 
@@ -1002,6 +998,7 @@ async function loadStaticData(){
 // Fires every time any session doc changes in Firestore.
 // Students see the "Session Open" button appear instantly.
 function subscribeToSessions(){
+  if(!db) return;
   if(_unsubSessions) _unsubSessions();
   _unsubSessions = sessionsCol()
     .where('active','==',true)
@@ -1024,6 +1021,7 @@ function subscribeToSessions(){
 
 // ─── Subscribe to attendance records ──────────────────
 function subscribeToRecords(){
+  if(!db) return;
   if(_unsubRecords) _unsubRecords();
   _unsubRecords = recordsCol()
     .orderBy('time','desc')
@@ -1167,7 +1165,7 @@ async function doLogin(){
   btn.disabled=true; btn.innerHTML='<span class="spin"></span> Signing in…';
 
   try{
-    // Query Firestore for user by email
+    if(!db){ toast('Firebase not connected. Check your config.','err'); btn.disabled=false; btn.innerHTML='Sign In'; return; }
     const snap = await usersCol().where('email','==',email).limit(1).get();
     if(snap.empty) throw new Error('Invalid email or password');
     const userDoc = snap.docs[0];
@@ -1858,41 +1856,25 @@ async function openSubmitModal(courseId){
     const stuGPS=await getGPS();
     gid('sub-checks').style.display='block';
 
-    // ── WiFi (public IP) is the PRIMARY check ──────────────
-    // Same public IP = definitely on the same router/network
-    const ipMatch = (stuIP === sess.lecIP);
+    const ipMatch=(stuIP===sess.lecIP);
+    const dist=Math.round(haversine(stuGPS.lat,stuGPS.lng,sess.lecLat,sess.lecLng));
+    const gpsOnCampus=(dist<=500); // 500m campus check — WiFi is the real proof, GPS just confirms on campus
 
-    // ── GPS is a SECONDARY campus-level sanity check ────────
-    // 500m radius — enough to confirm they are on campus,
-    // not across town. Indoors GPS drift (~200-300m) is
-    // accounted for so a student in the same building always passes.
-    const dist = Math.round(haversine(stuGPS.lat, stuGPS.lng, sess.lecLat, sess.lecLng));
-    const gpsOnCampus = (dist <= 500);
+    gid('chk-ip').innerHTML=ipMatch?'<span class="badge badge-green">✅ Same Network</span>':'<span class="badge badge-red">❌ Different network</span>';
+    gid('chk-gps').innerHTML=gpsOnCampus?`<span class="badge badge-green">✅ ${dist}m — on campus</span>`:`<span class="badge badge-red">❌ ${dist}m — off campus</span>`;
 
-    // Update check badges
-    gid('chk-ip').innerHTML = ipMatch
-      ? '<span class="badge badge-green">✅ Same Network</span>'
-      : '<span class="badge badge-red">❌ Different network</span>';
-
-    gid('chk-gps').innerHTML = gpsOnCampus
-      ? `<span class="badge badge-green">✅ ${dist}m — on campus</span>`
-      : `<span class="badge badge-red">❌ ${dist}m — off campus</span>`;
-
-    // ── Decision logic ─────────────────────────────────────
-    // WiFi MUST match (primary proof of presence)
-    // GPS just needs to confirm they are on campus (500m)
-    if(ipMatch && gpsOnCampus){
-      gid('sub-status').innerHTML=`<div class="vbox ok"><div class="vbox-ico">🎉</div><h3>Verification Passed!</h3><p>Same WiFi network confirmed. You are on campus and within range.</p></div>`;
+    if(ipMatch&&gpsOnCampus){
+      gid('sub-status').innerHTML=`<div class="vbox ok"><div class="vbox-ico">🎉</div><h3>Verification Passed!</h3><p>Same WiFi confirmed. You are on campus and within range.</p></div>`;
       _canSubmit=true;
       gid('btn-sub-att').disabled=false;
       gid('btn-sub-att').dataset.dist=dist;
       gid('btn-sub-att').dataset.sid=sid;
-    } else if(!ipMatch){
-      // WiFi failed — hard block regardless of GPS
-      gid('sub-status').innerHTML=`<div class="vbox fail"><div class="vbox-ico">🚫</div><h3>Wrong Network</h3><p>You are not connected to the same WiFi as your lecturer. Connect to the correct network and try again.</p></div>`;
     } else {
-      // WiFi passed but GPS says off campus — unusual, flag it
-      gid('sub-status').innerHTML=`<div class="vbox fail"><div class="vbox-ico">📍</div><h3>GPS Check Failed</h3><p>Your GPS shows you are ${dist}m away. You appear to be off campus. If you are physically present, ensure your GPS is accurate and try again.</p></div>`;
+      if(!ipMatch){
+        gid('sub-status').innerHTML=`<div class="vbox fail"><div class="vbox-ico">🚫</div><h3>Wrong Network</h3><p>You are not on the same WiFi as your lecturer. Connect to the correct network and try again.</p></div>`;
+      } else {
+        gid('sub-status').innerHTML=`<div class="vbox fail"><div class="vbox-ico">📍</div><h3>Off Campus</h3><p>Your GPS shows you are ${dist}m away. You appear to be off campus. Check your GPS and try again.</p></div>`;
+      }
     }
   } catch(e){
     gid('sub-status').innerHTML=`<div class="vbox fail"><div class="vbox-ico">❌</div><h3>Error</h3><p>${e.message||'Could not verify. Ensure GPS is enabled.'}</p></div>`;
