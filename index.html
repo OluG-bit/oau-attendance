@@ -823,7 +823,7 @@ input[type=file]{display:none;}
 <div class="overlay" id="m-session">
   <div class="modal">
     <div class="modal-title">🟢 Start Attendance Session</div>
-    <p class="text-sm col-3" style="margin-bottom:1.2rem;">Your network IP and GPS will be captured. Students must be on the same WiFi. GPS confirms they are on campus (within 500m).</p>
+    <p class="text-sm col-3" style="margin-bottom:1.2rem;">Your network IP and GPS will be captured. Your network IP and GPS will be captured. Students must be on the same WiFi — GPS distance is recorded for your report but does not block attendance.</p>
     <div id="sess-status"></div>
     <div class="modal-foot">
       <button class="btn btn-outline btn-sm" onclick="closeModal('m-session')">Cancel</button>
@@ -859,7 +859,7 @@ input[type=file]{display:none;}
     <div id="sub-status"></div>
     <div id="sub-checks" style="display:none;margin-top:1rem;">
       <div class="check-row"><span>📡 Same WiFi Network</span><span id="chk-ip">⏳</span></div>
-      <div class="check-row"><span>📍 GPS on Campus (≤500m)</span><span id="chk-gps">⏳</span></div>
+      <div class="check-row"><span>📍 GPS Distance (recorded only)</span><span id="chk-gps">⏳</span></div>
     </div>
     <div class="modal-foot">
       <button class="btn btn-outline btn-sm" onclick="closeModal('m-submit')">Cancel</button>
@@ -1084,16 +1084,14 @@ async function getPublicIP(){
 
 function getGPS(){
   return new Promise((res,rej)=>{
-    if(!navigator.geolocation){ rej(new Error('GPS not supported')); return; }
+    if(!navigator.geolocation){
+      // If GPS not available, return dummy so WiFi check can still proceed
+      res({lat:0,lng:0,acc:9999}); return;
+    }
     navigator.geolocation.getCurrentPosition(
-      p=>{
-        const lat=p.coords.latitude,lng=p.coords.longitude,acc=p.coords.accuracy;
-        if(Math.abs(lat)<0.01&&Math.abs(lng)<0.01){ rej(new Error('GPS returned invalid coordinates. Enable location access properly.')); return; }
-        if(acc>5000){ rej(new Error('GPS accuracy too poor ('+Math.round(acc)+'m). Move to an open area.')); return; }
-        res({lat,lng,acc});
-      },
-      e=>{ const m={1:'Location access denied.',2:'GPS unavailable.',3:'GPS timed out.'}; rej(new Error(m[e.code]||'GPS error.')); },
-      {enableHighAccuracy:true,timeout:15000,maximumAge:0}
+      p=>res({lat:p.coords.latitude,lng:p.coords.longitude,acc:p.coords.accuracy}),
+      ()=>res({lat:0,lng:0,acc:9999}), // GPS failed — return dummy, WiFi still decides
+      {enableHighAccuracy:true,timeout:12000,maximumAge:0}
     );
   });
 }
@@ -1290,6 +1288,18 @@ function adm(panel, el){
 async function loadAdmin(){
   show('admin');
   await loadStaticData();
+  // Also load all records and sessions from Firestore for accurate logs
+  if(db){
+    try{
+      const [rSnap, sSnap] = await Promise.all([
+        recordsCol().orderBy('time','desc').get(),
+        sessionsCol().orderBy('start','desc').get()
+      ]);
+      DS.records = [];
+      rSnap.forEach(d=>DS.records.push(d.data()));
+      sSnap.forEach(d=>{ DS.sessions[d.id]=d.data(); });
+    } catch(e){ console.warn('Logs load error:',e); }
+  }
   renderAdmStats();
   renderStudents();
   renderLecturers();
@@ -1444,7 +1454,19 @@ function renderLecCourses(){
   }).join('');
 }
 
-function renderLecHistory(){
+async function renderLecHistory(){
+  // Refresh from Firestore each time history tab opens
+  if(db){
+    try{
+      const [sSnap, rSnap] = await Promise.all([
+        sessionsCol().where('lecUid','==',curUser.uid).get(),
+        recordsCol().get()
+      ]);
+      sSnap.forEach(d=>{ DS.sessions[d.id]=d.data(); });
+      DS.records=[];
+      rSnap.forEach(d=>DS.records.push(d.data()));
+    } catch(e){ console.warn('History load error:',e); }
+  }
   const list=Object.values(DS.sessions).filter(s=>s.lecUid===curUser.uid).sort((a,b)=>(b.start||0)-(a.start||0));
   const tb=gid('lec-hist-tbody');
   if(!list.length){ tb.innerHTML='<tr><td colspan="7" class="empty" style="padding:2rem;">No sessions yet</td></tr>'; return; }
@@ -1645,11 +1667,12 @@ function downloadSheet(sessionId, format){
       ['Lecturer',sess.lecName],['Date',fmtDate(sess.start)],
       ['Start Time',fmtTimeOnly(sess.start)],['End Time',sess.end?fmtTimeOnly(sess.end):'Ongoing'],
       ['Total Present',recs.length],[''],
-      ['S/N','Student Name','Reg. Number','ID Number','Department','Level','Time Submitted','Distance (m)']
+      ['S/N','Student Name','Reg. Number','ID Number','Department','Level','Time Submitted','GPS Distance (m)','Note']
     ];
     recs.forEach((r,i)=>{
       const u=DS.users[r.stuId]||{};
-      rows.push([i+1,r.stuName,u.regno||'—',u.idno||'—',u.dept||'—',u.level||'—',fmtTimeOnly(r.time),r.dist||'—']);
+      const note=r.dist>500?'Far from lecturer ('+r.dist+'m)':r.dist>200?'Moderate distance':'Near lecturer';
+      rows.push([i+1,r.stuName,u.regno||'—',u.idno||'—',u.dept||'—',u.level||'—',fmtTimeOnly(r.time),r.dist||'0',note]);
     });
     const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
     const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
@@ -1659,7 +1682,8 @@ function downloadSheet(sessionId, format){
   } else if(format==='pdf'){
     const tableRows=recs.map((r,i)=>{
       const u=DS.users[r.stuId]||{};
-      return `<tr><td>${i+1}</td><td>${r.stuName}</td><td>${u.regno||'—'}</td><td>${u.idno||'—'}</td><td>${u.dept||'—'}</td><td>${u.level||'—'}L</td><td>${fmtTimeOnly(r.time)}</td><td>${r.dist||'—'}m</td></tr>`;
+      const note=r.dist>500?'Far ('+r.dist+'m)':r.dist>200?'Moderate':'Near';
+      return `<tr><td>${i+1}</td><td>${r.stuName}</td><td>${u.regno||'—'}</td><td>${u.idno||'—'}</td><td>${u.dept||'—'}</td><td>${u.level||'—'}L</td><td>${fmtTimeOnly(r.time)}</td><td>${r.dist||'0'}m</td><td>${note}</td></tr>`;
     }).join('');
     const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Attendance — ${sess.cCode}</title>
     <style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Segoe UI',sans-serif;padding:2cm;color:#1a1a1a;font-size:11pt;}
@@ -1684,7 +1708,7 @@ function downloadSheet(sessionId, format){
       <div><div class="meta-row"><span class="meta-label">End Time:</span><span>${sess.end?fmtTimeOnly(sess.end):'Ongoing'}</span></div></div>
     </div>
     <h2>Attendance Record — <span style="font-size:1.1rem;font-weight:700;color:#1B4D2E;">${recs.length} Students Present</span></h2>
-    <table><thead><tr><th>#</th><th>Student Name</th><th>Reg. Number</th><th>ID Number</th><th>Department</th><th>Level</th><th>Time</th><th>Distance</th></tr></thead>
+    <table><thead><tr><th>#</th><th>Student Name</th><th>Reg. Number</th><th>ID Number</th><th>Department</th><th>Level</th><th>Time</th><th>GPS Dist.</th><th>Note</th></tr></thead>
     <tbody>${tableRows||'<tr><td colspan="8" style="text-align:center;padding:1rem;color:#718096;">No students marked present</td></tr>'}</tbody></table>
     <div class="footer"><span>Generated: ${new Date().toLocaleString('en-NG',{timeZone:'Africa/Lagos'})}</span><span>OAU Smart Attendance · GPS &amp; WiFi Verified</span></div>
     <script>window.onload=()=>window.print();<\/script></body></html>`;
@@ -1854,23 +1878,28 @@ async function openSubmitModal(courseId){
     const stuGPS=await getGPS();
     gid('sub-checks').style.display='block';
 
+    // WiFi (public IP) is the ONLY gate — same network = present
     const ipMatch=(stuIP===sess.lecIP);
-    const dist=Math.round(haversine(stuGPS.lat,stuGPS.lng,sess.lecLat,sess.lecLng));
-    const gpsOnCampus=(dist<=500);
 
-    gid('chk-ip').innerHTML=ipMatch?'<span class="badge badge-green">✅ Same Network</span>':'<span class="badge badge-red">❌ Different network</span>';
-    gid('chk-gps').innerHTML=gpsOnCampus?`<span class="badge badge-green">✅ ${dist}m — on campus</span>`:`<span class="badge badge-red">❌ ${dist}m — off campus</span>`;
+    // GPS distance is captured and recorded but never blocks attendance
+    let dist=0;
+    try {
+      dist=Math.round(haversine(stuGPS.lat,stuGPS.lng,sess.lecLat,sess.lecLng));
+    } catch(e){ dist=0; }
 
-    if(ipMatch&&gpsOnCampus){
-      gid('sub-status').innerHTML=`<div class="vbox ok"><div class="vbox-ico">🎉</div><h3>Verification Passed!</h3><p>Same WiFi confirmed. You are on campus and within range.</p></div>`;
+    gid('chk-ip').innerHTML=ipMatch
+      ?'<span class="badge badge-green">✅ Same Network</span>'
+      :'<span class="badge badge-red">❌ Different network</span>';
+    gid('chk-gps').innerHTML=`<span class="badge badge-blue">📍 ${dist}m recorded</span>`;
+
+    if(ipMatch){
+      gid('sub-status').innerHTML=`<div class="vbox ok"><div class="vbox-ico">🎉</div><h3>Verification Passed!</h3><p>Same WiFi confirmed. GPS distance of ${dist}m has been recorded for your lecturer.</p></div>`;
       _canSubmit=true;
       gid('btn-sub-att').disabled=false;
       gid('btn-sub-att').dataset.dist=dist;
       gid('btn-sub-att').dataset.sid=sid;
-    } else if(!ipMatch){
-      gid('sub-status').innerHTML=`<div class="vbox fail"><div class="vbox-ico">🚫</div><h3>Wrong Network</h3><p>You are not on the same WiFi as your lecturer. Connect to the correct network and try again.</p></div>`;
     } else {
-      gid('sub-status').innerHTML=`<div class="vbox fail"><div class="vbox-ico">📍</div><h3>Off Campus</h3><p>Your GPS shows you are ${dist}m away. You appear to be off campus. Check your GPS and try again.</p></div>`;
+      gid('sub-status').innerHTML=`<div class="vbox fail"><div class="vbox-ico">🚫</div><h3>Wrong Network</h3><p>You are not connected to the same WiFi as your lecturer. Connect to the correct network and try again.</p></div>`;
     }
   } catch(e){
     gid('sub-status').innerHTML=`<div class="vbox fail"><div class="vbox-ico">❌</div><h3>Error</h3><p>${e.message||'Could not verify. Ensure GPS is enabled.'}</p></div>`;
@@ -1885,14 +1914,21 @@ async function submitAtt(){
     const sid=btn.dataset.sid;
     const dist=parseInt(btn.dataset.dist)||0;
     const c=DS.courses[_pendingCourseId];
+    if(!c){ toast('Course not found','err'); return; }
     const recId=uid();
     const rec={
       id:recId, sessionId:sid, stuId:curUser.uid, stuName:curUser.name,
       cCode:c.code, cTitle:c.title, time:Date.now(), status:'present', dist
     };
-    // ★ Write to Firestore → lecturer's live modal updates in real-time
-    await recordsCol().doc(recId).set(rec);
+    // Save to Firestore (real-time for lecturer live view)
+    if(db) await recordsCol().doc(recId).set(rec);
+    // Also push to local DS so admin logs update immediately
     DS.records.push(rec);
+    // Update session present count in Firestore
+    if(db && sid){
+      try{ await sessionsCol().doc(sid).update({presentCount: firebase.firestore.FieldValue.increment(1)}); }
+      catch(e){ console.warn('Count update failed:',e); }
+    }
     closeModal('m-submit');
     toast('✅ Attendance submitted! You are marked PRESENT.');
     renderStuCourses();
