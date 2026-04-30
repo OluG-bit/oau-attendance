@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OAU · Smart Attendance System</title>
+<link rel="icon" type="image/jpeg" href="WhatsApp Image 2026-04-30 at 10.41.20.jpeg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-
 
 
 <style>
@@ -446,7 +446,9 @@ input[type=file]{display:none;}
   <div class="land-bg"></div>
   <div class="land-grid"></div>
   <div class="land-content">
-    <div class="land-seal"><span>OAU</span></div>
+    <div class="land-seal" style="background: transparent; box-shadow: none;">
+  <img src="WhatsApp Image 2026-04-30 at 10.41.20.jpeg" alt="OAU Logo" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 2px rgba(200,155,42,.3), 0 0 0 16px rgba(200,155,42,.08), 0 0 60px rgba(200,155,42,.2);">
+</div>
     <h1 class="land-title">Smart <em>Attendance</em><br>System</h1>
     <p class="land-sub">Obafemi Awolowo University, Ile-Ife<br>Powered by GPS proximity &amp; network verification</p>
     <div class="land-cards">
@@ -1097,7 +1099,9 @@ function getGPS(){
     if(!navigator.geolocation){ rej(new Error('GPS not supported')); return; }
     navigator.geolocation.getCurrentPosition(
       p=>res({lat:p.coords.latitude,lng:p.coords.longitude,acc:p.coords.accuracy}),
-      rej,{enableHighAccuracy:true,timeout:10000});
+      rej,{enableHighAccuracy:true,
+      timeout:15000,
+      maximumAge: 0});
   });
 }
 
