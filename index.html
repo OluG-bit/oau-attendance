@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>OAU · Smart Attendance System</title>
-<link rel="icon" type="image/jpeg" href="WhatsApp Image 2026-03-31 at 22.26.54.jpeg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
 
 
 <style>
@@ -446,9 +446,7 @@ input[type=file]{display:none;}
   <div class="land-bg"></div>
   <div class="land-grid"></div>
   <div class="land-content">
-    <div class="land-seal" style="background: transparent; box-shadow: none;">
-  <img src="WhatsApp Image 2026-03-31 at 22.26.54.jpeg" alt="OAU Logo" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 2px rgba(200,155,42,.3), 0 0 0 16px rgba(200,155,42,.08), 0 0 60px rgba(200,155,42,.2);">
-</div>
+    <div class="land-seal"><span>OAU</span></div>
     <h1 class="land-title">Smart <em>Attendance</em><br>System</h1>
     <p class="land-sub">Obafemi Awolowo University, Ile-Ife<br>Powered by GPS proximity &amp; network verification</p>
     <div class="land-cards">
@@ -824,7 +822,7 @@ input[type=file]{display:none;}
 <div class="overlay" id="m-session">
   <div class="modal">
     <div class="modal-title">🟢 Start Attendance Session</div>
-    <p class="text-sm col-3" style="margin-bottom:1.2rem;">Your network IP and GPS will be captured. Students must share the same WiFi and be within 150m.</p>
+    <p class="text-sm col-3" style="margin-bottom:1.2rem;">Your network IP and GPS will be captured. Students must be on the same WiFi network. GPS is used as a campus-level backup check (within 500m).</p>
     <div id="sess-status"></div>
     <div class="modal-foot">
       <button class="btn btn-outline btn-sm" onclick="closeModal('m-session')">Cancel</button>
@@ -860,7 +858,7 @@ input[type=file]{display:none;}
     <div id="sub-status"></div>
     <div id="sub-checks" style="display:none;margin-top:1rem;">
       <div class="check-row"><span>📡 Same WiFi Network</span><span id="chk-ip">⏳</span></div>
-      <div class="check-row"><span>📍 GPS Proximity (≤150m)</span><span id="chk-gps">⏳</span></div>
+      <div class="check-row"><span>📍 GPS on Campus (≤500m)</span><span id="chk-gps">⏳</span></div>
     </div>
     <div class="modal-foot">
       <button class="btn btn-outline btn-sm" onclick="closeModal('m-submit')">Cancel</button>
@@ -883,33 +881,37 @@ input[type=file]{display:none;}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 
-<script>
+<script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.12.1/firebase-analytics.js";
+
 // ╔══════════════════════════════════════════════════════╗
-// ║  FIREBASE CONFIG                                      ║
+// ║  FIREBASE CONFIG — REPLACE WITH YOUR OWN VALUES      ║
+// ║  Get these from: Firebase Console → Project Settings ║
 // ╚══════════════════════════════════════════════════════╝
 const firebaseConfig = {
   apiKey:            "AIzaSyCgquLvZpnODhUZZh5zymO4fowWqVXWk_Q",
-  authDomain:        "oau-attendance-system-8c765.firebaseapp.com",
+  authDomain:        "oau-attendance-system-8c765.firebaseapp.com,
   projectId:         "oau-attendance-system-8c765",
   storageBucket:     "oau-attendance-system-8c765.firebasestorage.app",
   messagingSenderId: "442874527368",
-  appId:             "1:442874527368:web:f361bef0cae03faac8e93d"
+  appId:             "1:442874527368:web:f361bef0cae03faac8e93d",
+  measurementId:     "G-EH4DFS8XJW"
+
 };
-
-// Initialize Firebase using compat SDK so onclick buttons work
-let db = null;
-try {
+// Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
   firebase.initializeApp(firebaseConfig);
-  db = firebase.firestore();
-} catch(e) {
-  console.error('Firebase init failed:', e);
-}
+  const db = firebase.firestore();
 
-// ─── Firestore collection references (null-safe) ───────
-const usersCol    = () => db ? db.collection('users')    : null;
-const coursesCol  = () => db ? db.collection('courses')  : null;
-const sessionsCol = () => db ? db.collection('sessions') : null;
-const recordsCol  = () => db ? db.collection('records')  : null;
+
+// ─── Firestore collection references ───────────────────
+const usersCol    = () => db.collection('users');
+const coursesCol  = () => db.collection('courses');
+const sessionsCol = () => db.collection('sessions');
+const recordsCol  = () => db.collection('records');
 
 // ─── In-memory cache (populated from Firestore) ────────
 const DS = {
@@ -951,7 +953,6 @@ let _unsubRecords  = null;
 // ║  SEED DEFAULT DATA (runs once if Firestore is empty) ║
 // ╚══════════════════════════════════════════════════════╝
 async function seedIfEmpty(){
-  if(!db) return;
   const snap = await usersCol().limit(1).get();
   if(!snap.empty) return; // already seeded
 
@@ -1001,7 +1002,6 @@ async function loadStaticData(){
 // Fires every time any session doc changes in Firestore.
 // Students see the "Session Open" button appear instantly.
 function subscribeToSessions(){
-  if(!db) return;
   if(_unsubSessions) _unsubSessions();
   _unsubSessions = sessionsCol()
     .where('active','==',true)
@@ -1024,7 +1024,6 @@ function subscribeToSessions(){
 
 // ─── Subscribe to attendance records ──────────────────
 function subscribeToRecords(){
-  if(!db) return;
   if(_unsubRecords) _unsubRecords();
   _unsubRecords = recordsCol()
     .orderBy('time','desc')
@@ -1099,9 +1098,7 @@ function getGPS(){
     if(!navigator.geolocation){ rej(new Error('GPS not supported')); return; }
     navigator.geolocation.getCurrentPosition(
       p=>res({lat:p.coords.latitude,lng:p.coords.longitude,acc:p.coords.accuracy}),
-      rej,{enableHighAccuracy:true,
-      timeout:15000,
-      maximumAge: 0});
+      rej,{enableHighAccuracy:true,timeout:10000});
   });
 }
 
@@ -1170,7 +1167,6 @@ async function doLogin(){
   btn.disabled=true; btn.innerHTML='<span class="spin"></span> Signing in…';
 
   try{
-    if(!db){ toast('Firebase not connected. Check your config keys.','err'); btn.disabled=false; btn.innerHTML='Sign In'; return; }
     // Query Firestore for user by email
     const snap = await usersCol().where('email','==',email).limit(1).get();
     if(snap.empty) throw new Error('Invalid email or password');
@@ -1862,22 +1858,41 @@ async function openSubmitModal(courseId){
     const stuGPS=await getGPS();
     gid('sub-checks').style.display='block';
 
-    const ipMatch=(stuIP===sess.lecIP);
-    const dist=Math.round(haversine(stuGPS.lat,stuGPS.lng,sess.lecLat,sess.lecLng));
-    const gpsMatch=(dist<=150); // 150m — covers a full lecture hall + outdoor buffer
+    // ── WiFi (public IP) is the PRIMARY check ──────────────
+    // Same public IP = definitely on the same router/network
+    const ipMatch = (stuIP === sess.lecIP);
 
-    gid('chk-ip').innerHTML=ipMatch?'<span class="badge badge-green">✅ Match</span>':'<span class="badge badge-red">❌ Different network</span>';
-    gid('chk-gps').innerHTML=gpsMatch?`<span class="badge badge-green">✅ ${dist}m</span>`:`<span class="badge badge-red">❌ ${dist}m — too far</span>`;
+    // ── GPS is a SECONDARY campus-level sanity check ────────
+    // 500m radius — enough to confirm they are on campus,
+    // not across town. Indoors GPS drift (~200-300m) is
+    // accounted for so a student in the same building always passes.
+    const dist = Math.round(haversine(stuGPS.lat, stuGPS.lng, sess.lecLat, sess.lecLng));
+    const gpsOnCampus = (dist <= 500);
 
-    if(ipMatch&&gpsMatch){
-      gid('sub-status').innerHTML=`<div class="vbox ok"><div class="vbox-ico">🎉</div><h3>Verification Passed!</h3><p>You are on the correct network and within range.</p></div>`;
+    // Update check badges
+    gid('chk-ip').innerHTML = ipMatch
+      ? '<span class="badge badge-green">✅ Same Network</span>'
+      : '<span class="badge badge-red">❌ Different network</span>';
+
+    gid('chk-gps').innerHTML = gpsOnCampus
+      ? `<span class="badge badge-green">✅ ${dist}m — on campus</span>`
+      : `<span class="badge badge-red">❌ ${dist}m — off campus</span>`;
+
+    // ── Decision logic ─────────────────────────────────────
+    // WiFi MUST match (primary proof of presence)
+    // GPS just needs to confirm they are on campus (500m)
+    if(ipMatch && gpsOnCampus){
+      gid('sub-status').innerHTML=`<div class="vbox ok"><div class="vbox-ico">🎉</div><h3>Verification Passed!</h3><p>Same WiFi network confirmed. You are on campus and within range.</p></div>`;
       _canSubmit=true;
       gid('btn-sub-att').disabled=false;
       gid('btn-sub-att').dataset.dist=dist;
       gid('btn-sub-att').dataset.sid=sid;
+    } else if(!ipMatch){
+      // WiFi failed — hard block regardless of GPS
+      gid('sub-status').innerHTML=`<div class="vbox fail"><div class="vbox-ico">🚫</div><h3>Wrong Network</h3><p>You are not connected to the same WiFi as your lecturer. Connect to the correct network and try again.</p></div>`;
     } else {
-      const reason=!ipMatch?'You are not connected to the same WiFi as your lecturer.':`You are ${dist}m away. Must be within 150m of the classroom.`;
-      gid('sub-status').innerHTML=`<div class="vbox fail"><div class="vbox-ico">🚫</div><h3>Verification Failed</h3><p>${reason}</p></div>`;
+      // WiFi passed but GPS says off campus — unusual, flag it
+      gid('sub-status').innerHTML=`<div class="vbox fail"><div class="vbox-ico">📍</div><h3>GPS Check Failed</h3><p>Your GPS shows you are ${dist}m away. You appear to be off campus. If you are physically present, ensure your GPS is accurate and try again.</p></div>`;
     }
   } catch(e){
     gid('sub-status').innerHTML=`<div class="vbox fail"><div class="vbox-ico">❌</div><h3>Error</h3><p>${e.message||'Could not verify. Ensure GPS is enabled.'}</p></div>`;
