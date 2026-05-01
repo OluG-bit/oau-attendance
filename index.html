@@ -442,22 +442,6 @@ input[type=file]{display:none;}
 <body>
 <div id="toasts"></div>
 
-      <h2 style="font-size:1.1rem;font-weight:700;margin:.4rem 0 .3rem;">Anthropic API Key Required</h2>
-      <p style="font-size:.82rem;color:var(--text3);line-height:1.5;">This key is used for AI identity verification during student registration. It is stored <strong>only on this device</strong> and never uploaded anywhere.</p>
-    </div>
-    <div class="fg">
-      <label>Paste your Anthropic API Key</label>
-      <input type="password" id="apikey-input" placeholder="sk-ant-api03-..." style="font-family:monospace;font-size:.8rem;">
-    </div>
-    <p style="font-size:.75rem;color:var(--text3);margin:.4rem 0 1rem;">Get your key at <strong>console.anthropic.com</strong> → API Keys → Create Key</p>
-    <div style="display:flex;gap:.75rem;">
-      <button class="btn btn-outline btn-full" onclick="skipApiKey()">Skip for now</button>
-      <button class="btn btn-primary btn-full" onclick="saveApiKey()">Save Key</button>
-    </div>
-    <p style="font-size:.72rem;color:var(--text3);margin-top:.8rem;text-align:center;">Without this key, AI verification is skipped and ID cards are flagged for manual admin review.</p>
-  </div>
-</div>
-
 <!-- ══════════════ LANDING ══════════════ -->
 <div id="s-landing" class="screen active">
   <div class="land-bg"></div>
@@ -521,14 +505,14 @@ input[type=file]{display:none;}
       <!-- REGISTER -->
       <div id="f-reg" style="display:none;">
         <!-- Step indicator -->
-        <div style="display:flex;gap:0;margin-bottom:1.2rem;border-radius:8px;overflow:hidden;border:1px solid var(--border2);">
-          <div id="step-ind-1" style="flex:1;padding:.5rem;text-align:center;font-size:.75rem;font-weight:600;background:var(--green1);color:#fff;transition:.2s;">1 · Details</div>
-          <div id="step-ind-2" style="flex:1;padding:.5rem;text-align:center;font-size:.75rem;font-weight:600;background:var(--bg2);color:var(--text3);transition:.2s;">2 · ID Card</div>
-          <div id="step-ind-3" style="flex:1;padding:.5rem;text-align:center;font-size:.75rem;font-weight:600;background:var(--bg2);color:var(--text3);transition:.2s;">3 · Selfie</div>
-          <div id="step-ind-4" style="flex:1;padding:.5rem;text-align:center;font-size:.75rem;font-weight:600;background:var(--bg2);color:var(--text3);transition:.2s;">4 · Verify</div>
+        <div id="reg-steps" style="display:flex;gap:0;margin-bottom:1.2rem;border-radius:8px;overflow:hidden;border:1px solid var(--border2);">
+          <div class="reg-step active" id="step-ind-1" style="flex:1;padding:.5rem;text-align:center;font-size:.75rem;font-weight:600;background:var(--green1);color:#fff;">1 · Details</div>
+          <div class="reg-step" id="step-ind-2" style="flex:1;padding:.5rem;text-align:center;font-size:.75rem;font-weight:600;background:var(--bg2);color:var(--text3);">2 · ID Card</div>
+          <div class="reg-step" id="step-ind-3" style="flex:1;padding:.5rem;text-align:center;font-size:.75rem;font-weight:600;background:var(--bg2);color:var(--text3);">3 · Selfie</div>
+          <div class="reg-step" id="step-ind-4" style="flex:1;padding:.5rem;text-align:center;font-size:.75rem;font-weight:600;background:var(--bg2);color:var(--text3);">4 · Verify</div>
         </div>
 
-        <!-- STEP 1 -->
+        <!-- STEP 1: Basic details -->
         <div id="reg-step-1">
           <div class="text-c mb-2">
             <div class="photo-upload" id="photo-preview" onclick="document.getElementById('photo-file').click()">
@@ -575,6 +559,7 @@ input[type=file]{display:none;}
               <div class="di" id="device-fp-display">Generating fingerprint...</div>
             </div>
           </div>
+
           <div class="fg-row">
             <div class="fg"><label>Password</label><input type="password" id="rg-pw" placeholder="Min. 8 characters" autocomplete="new-password"></div>
             <div class="fg"><label>Confirm</label><input type="password" id="rg-pw2" placeholder="Repeat password"></div>
@@ -582,54 +567,56 @@ input[type=file]{display:none;}
           <button class="btn btn-primary btn-full" onclick="regNextStep()">Next →</button>
         </div>
 
-        <!-- STEP 2: ID Card -->
+        <!-- STEP 2: ID Card upload -->
         <div id="reg-step-2" style="display:none;">
           <div style="text-align:center;margin-bottom:1rem;">
-            <div style="font-size:2.5rem;">🪪</div>
+            <div style="font-size:2rem;">🪪</div>
             <h3 style="font-size:1rem;font-weight:600;margin:.4rem 0 .2rem;">Upload Your ID Card</h3>
-            <p class="text-xs col-3">Take a clear photo of your OAU student ID card. Make sure your name, ID number and photo are clearly visible.</p>
+            <p class="text-xs col-3">Take a clear photo of your OAU student ID card. Both sides should be visible if possible.</p>
           </div>
-          <div id="id-preview" onclick="document.getElementById('id-file').click()" style="width:100%;height:170px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px dashed var(--border2);background:var(--bg2);overflow:hidden;">
-            <div style="text-align:center;color:var(--text3);font-size:.85rem;">🪪<br><br>Tap to upload ID card photo</div>
+          <div class="photo-upload" id="id-preview" onclick="document.getElementById('id-file').click()" style="width:100%;height:160px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px dashed var(--border2);background:var(--bg2);">
+            <div style="text-align:center;color:var(--text3);font-size:.85rem;">🪪<br>Tap to upload ID card photo</div>
           </div>
           <input type="file" id="id-file" accept="image/*" onchange="previewID(this)" style="display:none;">
+          <p class="text-xs col-3" style="margin-top:.5rem;text-align:center;">Make sure your name, ID number and photo are clearly visible</p>
           <div style="display:flex;gap:.75rem;margin-top:1rem;">
             <button class="btn btn-outline btn-full" onclick="regGoStep(1)">← Back</button>
             <button class="btn btn-primary btn-full" id="btn-id-next" onclick="regNextStep()" disabled>Next →</button>
           </div>
         </div>
 
-        <!-- STEP 3: Selfie -->
+        <!-- STEP 3: Selfie upload -->
         <div id="reg-step-3" style="display:none;">
           <div style="text-align:center;margin-bottom:1rem;">
-            <div style="font-size:2.5rem;">🤳</div>
+            <div style="font-size:2rem;">🤳</div>
             <h3 style="font-size:1rem;font-weight:600;margin:.4rem 0 .2rem;">Take a Selfie</h3>
-            <p class="text-xs col-3">Upload a clear photo of your face. Face forward, good lighting, no glasses or hat.</p>
+            <p class="text-xs col-3">Upload a clear photo of your face. Make sure it matches the photo on your ID card.</p>
           </div>
-          <div id="selfie-preview" onclick="document.getElementById('selfie-file').click()" style="width:160px;height:160px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px dashed var(--border2);background:var(--bg2);overflow:hidden;">
+          <div class="photo-upload" id="selfie-preview" onclick="document.getElementById('selfie-file').click()" style="width:160px;height:160px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px dashed var(--border2);background:var(--bg2);">
             <div style="text-align:center;color:var(--text3);font-size:.85rem;">🤳<br>Selfie</div>
           </div>
           <input type="file" id="selfie-file" accept="image/*" capture="user" onchange="previewSelfie(this)" style="display:none;">
+          <p class="text-xs col-3" style="margin-top:.5rem;text-align:center;">Face forward, good lighting, no glasses or hat</p>
           <div style="display:flex;gap:.75rem;margin-top:1rem;">
             <button class="btn btn-outline btn-full" onclick="regGoStep(2)">← Back</button>
             <button class="btn btn-primary btn-full" id="btn-selfie-next" onclick="regNextStep()" disabled>Next →</button>
           </div>
         </div>
 
-        <!-- STEP 4: AI Verification -->
+        <!-- STEP 4: AI Verification result -->
         <div id="reg-step-4" style="display:none;">
-          <div id="verify-status" style="text-align:center;padding:1.2rem 0;">
+          <div id="verify-status" style="text-align:center;padding:1.5rem 0;">
             <div style="font-size:2.5rem;">🔍</div>
-            <h3 style="margin:.5rem 0 .3rem;">Verifying identity…</h3>
-            <p class="text-xs col-3">Claude AI is checking your ID and selfie. Takes ~10 seconds.</p>
+            <h3 style="margin:.5rem 0 .3rem;">Verifying your identity…</h3>
+            <p class="text-xs col-3">Claude AI is checking your ID card and selfie. This takes about 10 seconds.</p>
           </div>
           <div id="verify-checks" style="display:none;margin-bottom:1rem;">
-            <div class="flex-b text-sm" style="padding:.5rem 0;border-bottom:1px solid var(--border2);"><span>📋 Name on ID</span><span id="vc-name">⏳</span></div>
-            <div class="flex-b text-sm" style="padding:.5rem 0;border-bottom:1px solid var(--border2);"><span>🔢 ID number</span><span id="vc-id">⏳</span></div>
+            <div class="flex-b text-sm" style="padding:.5rem 0;border-bottom:1px solid var(--border2);"><span>📋 Name match</span><span id="vc-name">⏳</span></div>
+            <div class="flex-b text-sm" style="padding:.5rem 0;border-bottom:1px solid var(--border2);"><span>🔢 ID number match</span><span id="vc-id">⏳</span></div>
             <div class="flex-b text-sm" style="padding:.5rem 0;border-bottom:1px solid var(--border2);"><span>🤳 Face match</span><span id="vc-face">⏳</span></div>
             <div class="flex-b text-sm" style="padding:.5rem 0;"><span>📧 Email verification</span><span id="vc-email">⏳</span></div>
           </div>
-          <div style="display:flex;gap:.75rem;">
+          <div style="display:flex;gap:.75rem;margin-top:1rem;">
             <button class="btn btn-outline btn-full" id="btn-verify-back" onclick="regGoStep(3)" style="display:none;">← Back</button>
             <button class="btn btn-primary btn-full" id="btn-rg" onclick="doRegister()" style="display:none;">✅ Create Account</button>
           </div>
@@ -900,7 +887,7 @@ input[type=file]{display:none;}
 <div class="overlay" id="m-session">
   <div class="modal">
     <div class="modal-title">🟢 Start Attendance Session</div>
-    <p class="text-sm col-3" style="margin-bottom:1.2rem;">Your network IP and GPS will be captured. Your network IP and GPS will be captured. Students need same WiFi — GPS distance is just recorded.</p>
+    <p class="text-sm col-3" style="margin-bottom:1.2rem;">Your network IP and GPS will be captured. Your network IP and GPS will be captured. Students must be on the same WiFi — GPS distance is recorded for your report but does not block attendance.</p>
     <div id="sess-status"></div>
     <div class="modal-foot">
       <button class="btn btn-outline btn-sm" onclick="closeModal('m-session')">Cancel</button>
@@ -979,10 +966,9 @@ const coursesCol  = () => db ? db.collection('courses')  : null;
 const sessionsCol = () => db ? db.collection('sessions') : null;
 const recordsCol  = () => db ? db.collection('records')  : null;
 
-// ── Anthropic API key ──
-// Safe to hardcode here since the repo is private
+// ── Anthropic API key (for ID + face verification) ──
+// Get yours free at console.anthropic.com
 const ANTHROPIC_KEY = "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";
-function getAnthropicKey(){ return ANTHROPIC_KEY; }
 
 // ─── In-memory cache (populated from Firestore) ────────
 const DS = {
@@ -1168,7 +1154,7 @@ async function getPublicIP(){
 }
 
 function getGPS(){
-  return new Promise(res=>{
+  return new Promise((res)=>{
     if(!navigator.geolocation){ res({lat:0,lng:0,acc:9999}); return; }
     navigator.geolocation.getCurrentPosition(
       p=>res({lat:p.coords.latitude,lng:p.coords.longitude,acc:p.coords.accuracy}),
@@ -1260,19 +1246,26 @@ async function doLogin(){
     }
 
     curUser={...user};
-    // Email verification check (skip for admin)
+
+    // Check email verification (skip for admin and demo accounts)
     if(curRole !== 'admin' && auth){
       try{
+        const fbUser = auth.currentUser;
+        // Try signing in to Firebase Auth to get verification status
         const authCred = await auth.signInWithEmailAndPassword(email, pw);
         if(!authCred.user.emailVerified){
           await auth.signOut();
-          throw new Error('📧 Email not verified. Check your inbox and click the link before signing in.');
+          throw new Error('📧 Please verify your email first. Check your inbox for a verification link from Firebase.');
         }
       } catch(authErr){
-        if(authErr.message && authErr.message.includes('Email not verified')) throw authErr;
-        console.warn('Email verify skipped:', authErr.code);
+        if(authErr.message && authErr.message.includes('verify your email')){
+          throw authErr; // re-throw our custom error
+        }
+        // Auth user doesn't exist or other auth error — allow through (demo accounts etc)
+        console.warn('Email verify check skipped:', authErr.code || authErr.message);
       }
     }
+
     localStorage.setItem('oau_session', JSON.stringify({uid: curUser.uid, role: curUser.role}));
     toast(`Welcome back, ${curUser.name.split(' ')[0]}! 👋`);
     enterDashboard();
@@ -1287,17 +1280,17 @@ async function doLogin(){
 // ═══════════════════════════════════════════════════════
 //  REGISTER
 // ═══════════════════════════════════════════════════════
-// ── Registration state ──────────────────────────────
+// ── Registration state ──────────────────────────────────
 let _regIdFile=null, _regSelfieFile=null, _regVerified=false, _regCurrentStep=1;
 
 function regGoStep(n){
   for(let i=1;i<=4;i++){
-    const el=gid('reg-step-'+i);
-    if(el) el.style.display=(i===n)?'block':'none';
+    const s=gid('reg-step-'+i);
+    if(s) s.style.display=(i===n)?'block':'none';
     const ind=gid('step-ind-'+i);
     if(ind){
-      ind.style.background = i<n?'#27a74a':i===n?'var(--green1)':'var(--bg2)';
-      ind.style.color      = i<=n?'#fff':'var(--text3)';
+      ind.style.background = i<n ? '#27a74a' : i===n ? 'var(--green1)' : 'var(--bg2)';
+      ind.style.color = i<=n ? '#fff' : 'var(--text3)';
     }
   }
   _regCurrentStep=n;
@@ -1306,6 +1299,7 @@ function regGoStep(n){
 
 function regNextStep(){
   if(_regCurrentStep===1){
+    // Validate step 1 fields
     const name=gid('rg-name').value.trim(), email=gid('rg-email').value.trim();
     const pw=gid('rg-pw').value, pw2=gid('rg-pw2').value;
     if(!name||!email||!pw||!pw2){ toast('Fill in all fields','err'); return; }
@@ -1314,11 +1308,12 @@ function regNextStep(){
     if(curRole==='lecturer'&&!email.endsWith('@oauife.edu.ng')){ toast('Lecturer email must end with @oauife.edu.ng','err'); return; }
     if(curRole==='student'&&!email.endsWith('@student.oauife.edu.ng')){ toast('Student email must end with @student.oauife.edu.ng','err'); return; }
     if(curRole==='student'){
-      const regno=gid('rg-regno').value.trim(),idno=gid('rg-idno').value.trim();
-      const level=gid('rg-level').value,faculty=gid('rg-faculty-s').value,dept=gid('rg-dept-s').value.trim();
+      const regno=gid('rg-regno').value.trim(), idno=gid('rg-idno').value.trim();
+      const level=gid('rg-level').value, faculty=gid('rg-faculty-s').value, dept=gid('rg-dept-s').value.trim();
       if(!regno||!idno||!level||!faculty||!dept){ toast('Complete all student fields','err'); return; }
     } else {
-      if(!gid('rg-faculty-l').value||!gid('rg-dept-l').value.trim()){ toast('Complete all lecturer fields','err'); return; }
+      const faculty=gid('rg-faculty-l').value, dept=gid('rg-dept-l').value.trim();
+      if(!faculty||!dept){ toast('Complete all lecturer fields','err'); return; }
     }
     regGoStep(2);
   } else if(_regCurrentStep===2){
@@ -1335,7 +1330,7 @@ function previewID(inp){
     _regIdFile=inp.files[0];
     const r=new FileReader();
     r.onload=e=>{
-      gid('id-preview').innerHTML=`<img src="${e.target.result}" style="width:100%;height:100%;object-fit:contain;">`;
+      gid('id-preview').innerHTML=`<img src="${e.target.result}" style="width:100%;height:100%;object-fit:contain;border-radius:8px;">`;
       gid('btn-id-next').disabled=false;
     };
     r.readAsDataURL(inp.files[0]);
@@ -1365,18 +1360,18 @@ function fileToBase64(file){
 
 async function runAIVerification(){
   _regVerified=false;
-  gid('verify-status').innerHTML=`<div style="font-size:2.5rem;margin-bottom:.5rem;">🔍</div><h3 style="margin:.3rem 0;">Verifying identity…</h3><p class="text-xs col-3">Claude AI is checking your ID and selfie. Takes ~10 seconds.</p>`;
+  gid('verify-status').innerHTML=`<div style="font-size:2.5rem;">🔍</div><h3 style="margin:.5rem 0 .3rem;">Verifying your identity…</h3><p class="text-xs col-3">Claude AI is checking your ID card and selfie. This takes about 10–15 seconds.</p>`;
   gid('verify-checks').style.display='none';
   gid('btn-rg').style.display='none';
   gid('btn-verify-back').style.display='none';
 
-  const name = gid('rg-name').value.trim();
-  const idno = curRole==='student' ? gid('rg-idno').value.trim() : 'N/A';
-  const key  = getAnthropicKey();
+  const name   = gid('rg-name').value.trim();
+  const idno   = curRole==='student' ? gid('rg-idno').value.trim() : '';
+  const key    = ANTHROPIC_KEY;
 
-  // No API key — skip AI, flag for admin review
-  if(!key){
-    gid('verify-status').innerHTML=`<div style="font-size:2rem;">⚠️</div><h3 style="margin:.5rem 0 .3rem;">AI Verification Skipped</h3><p class="text-xs col-3">No Anthropic API key is set up. Your ID card will be flagged for admin review. You can still create your account.</p>`;
+  if(!key || key==='PASTE_YOUR_ANTHROPIC_API_KEY_HERE'){
+    // No API key — skip AI, just proceed (admin can review manually)
+    gid('verify-status').innerHTML=`<div style="font-size:2rem;">⚠️</div><h3 style="margin:.5rem 0 .3rem;">AI Verification Skipped</h3><p class="text-xs col-3">No Anthropic API key configured. Your ID card has been saved for admin review.</p>`;
     gid('btn-verify-back').style.display='';
     gid('btn-rg').style.display='';
     gid('btn-rg').textContent='Create Account (Pending Review)';
@@ -1384,54 +1379,73 @@ async function runAIVerification(){
     return;
   }
 
-  try{
-    const [idB64, selfieB64] = await Promise.all([fileToBase64(_regIdFile), fileToBase64(_regSelfieFile)]);
-    const idMime  = _regIdFile.type   || 'image/jpeg';
-    const selMime = _regSelfieFile.type || 'image/jpeg';
+  try {
+    const [idB64, selfieB64] = await Promise.all([
+      fileToBase64(_regIdFile),
+      fileToBase64(_regSelfieFile)
+    ]);
 
-    const prompt = `You are an identity verification system for a Nigerian university attendance app.
+    const idMime   = _regIdFile.type   || 'image/jpeg';
+    const selMime  = _regSelfieFile.type || 'image/jpeg';
 
-The user claims:
+    const prompt = `You are verifying a student's identity for a university attendance system.
+
+The student claims:
 - Name: ${name}
-- ID Number: ${idno}
+- ID Number: ${idno || 'N/A (lecturer)'}
 - Role: ${curRole}
 
-Image 1 is their ID card. Image 2 is their selfie.
+I am providing two images:
+1. Their ID card
+2. Their selfie
 
-Check all of the following and respond ONLY with this exact JSON (no markdown, no extra text):
-{"nameMatch":true/false,"idNumberMatch":true/false,"faceMatch":true/false,"nameFound":"name on ID","idFound":"ID number on card","overallPass":true/false,"reason":"brief reason if failed or All checks passed"}
+Please check ALL of the following and respond ONLY in this exact JSON format (no markdown, no explanation):
+{
+  "nameMatch": true/false,
+  "idNumberMatch": true/false,
+  "faceMatch": true/false,
+  "nameFound": "the name you found on the ID card",
+  "idFound": "the ID number you found on the ID card",
+  "overallPass": true/false,
+  "reason": "brief explanation if anything failed, or 'All checks passed'"
+}
 
 Rules:
-- nameMatch: true if name on ID card closely matches "${name}"
-- idNumberMatch: true if "${idno}" appears on the ID card (always true if role is lecturer)
-- faceMatch: true if selfie and ID card photo appear to be the same person
+- nameMatch: true if the name on the ID card is similar to "${name}" (allow minor spelling differences)
+- idNumberMatch: true if "${idno}" appears anywhere on the ID card (or true if role is lecturer)
+- faceMatch: true if the person in the selfie appears to be the same person as the photo on the ID card
 - overallPass: true only if nameMatch AND faceMatch are both true`;
 
-    const resp = await fetch('https://api.anthropic.com/v1/messages',{
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({
-        model:'claude-opus-4-5', max_tokens:300,
-        messages:[{role:'user',content:[
-          {type:'image',source:{type:'base64',media_type:idMime,  data:idB64}},
-          {type:'image',source:{type:'base64',media_type:selMime, data:selfieB64}},
-          {type:'text', text:prompt}
-        ]}]
+      headers:{ 'Content-Type':'application/json', 'x-api-key': key, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+      body: JSON.stringify({
+        model:'claude-opus-4-5',
+        max_tokens:300,
+        messages:[{
+          role:'user',
+          content:[
+            { type:'image', source:{ type:'base64', media_type:idMime,   data:idB64    }},
+            { type:'image', source:{ type:'base64', media_type:selMime,  data:selfieB64}},
+            { type:'text',  text: prompt }
+          ]
+        }]
       })
     });
 
-    const data   = await resp.json();
-    const raw    = (data.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim();
-    const result = JSON.parse(raw);
+    const data = await resp.json();
+    const raw  = data.content?.[0]?.text || '{}';
+    const result = JSON.parse(raw.replace(/```json|```/g,'').trim());
 
+    // Show checks
     gid('verify-checks').style.display='block';
-    gid('vc-name').innerHTML  = result.nameMatch      ? '<span class="badge badge-green">✅ Match</span>'        : `<span class="badge badge-red">❌ Found: "${result.nameFound}"</span>`;
-    gid('vc-id').innerHTML    = result.idNumberMatch  ? '<span class="badge badge-green">✅ Match</span>'        : `<span class="badge badge-red">❌ Found: "${result.idFound}"</span>`;
-    gid('vc-face').innerHTML  = result.faceMatch      ? '<span class="badge badge-green">✅ Same person</span>'  : '<span class="badge badge-red">❌ Face mismatch</span>';
-    gid('vc-email').innerHTML = '<span class="badge badge-blue">📧 Will be sent after account creation</span>';
+    gid('vc-name').innerHTML  = result.nameMatch  ? '<span class="badge badge-green">✅ Match</span>'  : `<span class="badge badge-red">❌ Got: "${result.nameFound}"</span>`;
+    gid('vc-id').innerHTML    = result.idNumberMatch ? '<span class="badge badge-green">✅ Match</span>'  : `<span class="badge badge-red">❌ Got: "${result.idFound}"</span>`;
+    gid('vc-face').innerHTML  = result.faceMatch  ? '<span class="badge badge-green">✅ Match</span>'  : '<span class="badge badge-red">❌ Face mismatch</span>';
+    gid('vc-email').innerHTML = '<span class="badge badge-blue">📧 Will be sent</span>';
 
     if(result.overallPass){
-      gid('verify-status').innerHTML=`<div style="font-size:2.5rem;">✅</div><h3 style="margin:.5rem 0 .3rem;color:var(--green1);">Identity Verified!</h3><p class="text-xs col-3">All checks passed. A verification email will be sent to your address — click the link before signing in.</p>`;
+      gid('verify-status').innerHTML=`<div style="font-size:2.5rem;">✅</div><h3 style="margin:.5rem 0 .3rem;color:var(--green1);">Identity Verified!</h3><p class="text-xs col-3">All checks passed. A verification email will be sent to your email address — you must click the link before you can log in.</p>`;
       gid('btn-rg').style.display='';
       gid('btn-rg').textContent='✅ Create Account & Send Verification Email';
       _regVerified=true;
@@ -1439,9 +1453,10 @@ Rules:
       gid('verify-status').innerHTML=`<div style="font-size:2.5rem;">❌</div><h3 style="margin:.5rem 0 .3rem;color:var(--red2);">Verification Failed</h3><p class="text-xs col-3">${result.reason}</p>`;
       gid('btn-verify-back').style.display='';
     }
+
   } catch(e){
-    console.error('AI verify error:',e);
-    gid('verify-status').innerHTML=`<div style="font-size:2rem;">⚠️</div><h3 style="margin:.5rem 0 .3rem;">Verification Error</h3><p class="text-xs col-3">AI check failed: ${e.message}. Your ID will be flagged for admin review.</p>`;
+    console.error('AI verification error:',e);
+    gid('verify-status').innerHTML=`<div style="font-size:2rem;">⚠️</div><h3 style="margin:.5rem 0 .3rem;">Verification Error</h3><p class="text-xs col-3">Could not complete AI check: ${e.message}. You can still create your account — ID will be flagged for admin review.</p>`;
     gid('btn-verify-back').style.display='';
     gid('btn-rg').style.display='';
     gid('btn-rg').textContent='Create Account (Pending Review)';
@@ -1449,13 +1464,13 @@ Rules:
   }
 }
 
-
-
 async function doRegister(){
   if(!_regVerified){ toast('Please complete identity verification first','err'); return; }
+
   const name  = gid('rg-name').value.trim();
   const email = gid('rg-email').value.trim().toLowerCase();
   const pw    = gid('rg-pw').value;
+
   let extra={};
   if(curRole==='student'){
     extra={ regno:gid('rg-regno').value.trim(), idno:gid('rg-idno').value.trim(),
@@ -1464,32 +1479,44 @@ async function doRegister(){
   } else {
     extra={ faculty:gid('rg-faculty-l').value, dept:gid('rg-dept-l').value.trim() };
   }
+
   const btn=gid('btn-rg');
   btn.disabled=true; btn.innerHTML='<span class="spin"></span> Creating account…';
+
   try{
     if(!db) throw new Error('Firebase not connected.');
     const fp = await ensureFP();
+
+    // Check email uniqueness in Firestore
     const emailSnap = await usersCol().where('email','==',email).limit(1).get();
     if(!emailSnap.empty) throw new Error('An account with this email already exists');
-    // Create Firebase Auth user → sends verification email
-    let firebaseUid=null;
-    try{
+
+    // Create Firebase Auth user (enables email verification)
+    let firebaseUid = null;
+    try {
       const authUser = await auth.createUserWithEmailAndPassword(email, pw);
       firebaseUid = authUser.user.uid;
       await authUser.user.sendEmailVerification();
-      if(gid('vc-email')) gid('vc-email').innerHTML='<span class="badge badge-green">✅ Verification email sent!</span>';
+      gid('vc-email').innerHTML='<span class="badge badge-green">✅ Verification email sent!</span>';
     } catch(authErr){
-      if(authErr.code==='auth/email-already-in-use') throw new Error('An account with this email already exists');
-      console.warn('Auth warning:',authErr.message);
+      if(authErr.code==='auth/email-already-in-use'){
+        throw new Error('An account with this email already exists');
+      }
+      console.warn('Firebase Auth creation warning:',authErr.message);
     }
-    const id=firebaseUid||uid();
-    const newUser={uid:id,role:curRole,name,email,password:pw,photoURL:'',active:true,emailVerified:false,idVerified:_regVerified,deviceFP:fp,...extra};
+
+    // Save to Firestore — emailVerified starts false
+    const id = firebaseUid || uid();
+    const newUser={
+      uid:id, role:curRole, name, email, password:pw,
+      photoURL:'', active:true, emailVerified:false,
+      idVerified: _regVerified, deviceFP:fp, ...extra
+    };
     await usersCol().doc(id).set(newUser);
     DS.users[id]=newUser;
+
     toast('🎉 Account created! Check your email and click the verification link before signing in.');
-    // Reset form
-    _regIdFile=null; _regSelfieFile=null; _regVerified=false; _regCurrentStep=1;
-    regGoStep(1);
+    regGoStep(1); _regCurrentStep=1; _regIdFile=null; _regSelfieFile=null; _regVerified=false;
     authTab('login');
     gid('li-email').value=email;
   } catch(e){
@@ -1538,10 +1565,10 @@ async function loadAdmin(){
   await loadStaticData();
   if(db){
     try{
-      const [rSnap,sSnap]=await Promise.all([recordsCol().orderBy('time','desc').get(),sessionsCol().get()]);
+      const [rSnap,sSnap]=await Promise.all([recordsCol().orderBy('time','desc').get(), sessionsCol().get()]);
       DS.records=[]; rSnap.forEach(d=>DS.records.push(d.data()));
-      sSnap.forEach(d=>{DS.sessions[d.id]=d.data();});
-    }catch(e){console.warn('Admin data:',e);}
+      sSnap.forEach(d=>{ DS.sessions[d.id]=d.data(); });
+    } catch(e){ console.warn('Admin data load:',e); }
   }
   renderAdmStats();
   renderStudents();
@@ -2108,13 +2135,16 @@ async function openSubmitModal(courseId){
     gid('sub-checks').style.display='block';
 
     const ipMatch=(stuIP===sess.lecIP);
-    let dist=0; try{ dist=Math.round(haversine(stuGPS.lat,stuGPS.lng,sess.lecLat,sess.lecLng)); }catch(e){}
+    let dist=0;
+    try{ dist=Math.round(haversine(stuGPS.lat,stuGPS.lng,sess.lecLat,sess.lecLng)); }catch(e){}
     gid('chk-ip').innerHTML=ipMatch?'<span class="badge badge-green">✅ Same Network</span>':'<span class="badge badge-red">❌ Different network</span>';
     gid('chk-gps').innerHTML=`<span class="badge badge-blue">📍 ${dist}m recorded</span>`;
     if(ipMatch){
       gid('sub-status').innerHTML=`<div class="vbox ok"><div class="vbox-ico">🎉</div><h3>Verification Passed!</h3><p>Same WiFi confirmed. GPS distance of ${dist}m recorded for your lecturer.</p></div>`;
-      _canSubmit=true; gid('btn-sub-att').disabled=false;
-      gid('btn-sub-att').dataset.dist=dist; gid('btn-sub-att').dataset.sid=sid;
+      _canSubmit=true;
+      gid('btn-sub-att').disabled=false;
+      gid('btn-sub-att').dataset.dist=dist;
+      gid('btn-sub-att').dataset.sid=sid;
     } else {
       gid('sub-status').innerHTML=`<div class="vbox fail"><div class="vbox-ico">🚫</div><h3>Wrong Network</h3><p>You are not connected to the same WiFi as your lecturer. Connect to the correct network and try again.</p></div>`;
     }
